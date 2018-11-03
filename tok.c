@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-const char* example = "def (concat \"thing_\" $var1) [print \"Hello, world!\" (+ 2 $1)]";
+const char* example = "def (concat \"thing_\" $var1) [print \"Hello, world!\" (+ 2 $1 $\"3\")]";
 
 #define MAX_TOKENS (16*1024)
 
@@ -124,7 +124,7 @@ char next(cursor* c) {
 int is_ident_char(char c, int allow_numbers) {
 	return (
 		(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-		(c >= '%' && c <= '/') || c == ':' || (c >= '<' && c <= '@') || 
+		(c >= '%' && c <= '/' && c != '(' && c != ')') || c == ':' || (c >= '<' && c <= '@') || 
 		(allow_numbers && c >= '0' && c <= '9')
 	);
 }
@@ -151,7 +151,7 @@ int tokenise_string(token_list* tokens, cursor* cur, token_type type) {
 
 	char c;
 	int start_index = cur->index;
-	int end_index = start_index-1;
+	int end_index = start_index;
 	while(1) {
 		c = peek(cur);
 		if( is_ident_char(c, 1) ||
@@ -237,10 +237,33 @@ int tokenise(token_list* tokens, cursor* cur) {
 	}
 }
 
+void print_token(token* tok) {
+	switch(tok->type) {
+		case TOKEN_ERROR:
+		case TOKEN_START:
+	    case TOKEN_END:
+	    case TOKEN_LEFT_PAREN:
+	    case TOKEN_RIGHT_PAREN:
+	    case TOKEN_LEFT_SQUARE:
+	    case TOKEN_RIGHT_SQUARE:
+	    	printf("%s\n", token_type_strmap[tok->type]);
+	    	break;
+
+    	case TOKEN_STRING:
+    	case TOKEN_VARIABLE:
+    		printf("%s str=\"%s\"\n", token_type_strmap[tok->type], tok->str);
+    		break;
+
+    	case TOKEN_NUMBER:
+    		printf("%s num=%d\n", token_type_strmap[tok->type], tok->num);
+    		break;
+	}
+}
+
 void print_token_list(token_list* tokenlist) {
 	token* t = tokenlist->first;
 	while(t != NULL) {
-		printf("%s\n", token_type_strmap[t->type]);
+		print_token(t);
 		t = t->next;
 	}
 }

@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-const char* example = "def (concat \"thing_\" $var1) [print \"Hello, world!\" (+ 2 $1 $\"3\")]";
+const char* example = "def (concat \"thing_\" $var1) [print \"Hello, world!\" (+ 2 $1 $\"3\")];";
 
 #define MAX_TOKENS (16*1024)
 
@@ -27,7 +27,8 @@ typedef enum token_type_t {
 	TOKEN_STRING,
 	TOKEN_NUMBER,
 	TOKEN_LEFT_SQUARE,
-	TOKEN_RIGHT_SQUARE
+	TOKEN_RIGHT_SQUARE,
+	TOKEN_STATEMENT_END,
 } token_type;
 
 const char* token_type_strmap[] = {
@@ -41,6 +42,7 @@ const char* token_type_strmap[] = {
 	"TOKEN_NUMBER",
 	"TOKEN_LEFT_SQUARE",
 	"TOKEN_RIGHT_SQUARE",
+	"TOKEN_STATEMENT_END",
 };
 
 typedef struct token_t token;
@@ -230,6 +232,10 @@ int tokenise(token_list* tokens, cursor* cur) {
 				return err;
 			}
 
+		} else if(c == ';') {
+			push_token(tokens, new_token(TOKEN_STATEMENT_END));
+			next(cur);
+
 		} else {
 			printf("Unknown Token '%c'\n", c);
 			return -1;
@@ -239,13 +245,7 @@ int tokenise(token_list* tokens, cursor* cur) {
 
 void print_token(token* tok) {
 	switch(tok->type) {
-		case TOKEN_ERROR:
-		case TOKEN_START:
-	    case TOKEN_END:
-	    case TOKEN_LEFT_PAREN:
-	    case TOKEN_RIGHT_PAREN:
-	    case TOKEN_LEFT_SQUARE:
-	    case TOKEN_RIGHT_SQUARE:
+		default:
 	    	printf("%s\n", token_type_strmap[tok->type]);
 	    	break;
 

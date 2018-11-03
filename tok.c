@@ -121,7 +121,7 @@ char next(cursor* c) {
 	return peek(c);
 }
 
-void tokenise_number(token_list* tokens, cursor* cur) {
+int tokenise_number(token_list* tokens, cursor* cur) {
 	int num = 0;
 	char c = peek(cur);
 	while(c >= '0' && c <= '9') {
@@ -130,6 +130,47 @@ void tokenise_number(token_list* tokens, cursor* cur) {
 		c = next(cur);
 	}
 	push_token(tokens, new_token_num(TOKEN_NUMBER, num));
+	return 0;
+}
+
+int tokenise_string(token_list* tokens, cursor* cur) {
+	int quoted = 0;
+
+	if(peek(cur) == '"') {
+		quoted = 1;
+		next(cur);
+	}
+
+	char c;
+	int start_index = cur->index;
+	int end_index = start_index-1;
+	while(1) {
+		c = peek(cur);
+		if( (c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') ||
+			(quoted && c != '"' && c != '\0')) {
+			end_index++;
+			next(cur);
+		} else {
+			break;
+		}
+	}
+
+	if(quoted) {
+		if(c == '"') {
+			next(cur);
+		} else if(c == '\0') {
+			printf("Unexpected end in quoted string");
+			return -1;
+		} else {
+			printf("Unexpected char '%c' in quoted string", c);
+			return -1;
+		}
+	}
+
+	push_token(tokens, new_token_str(TOKEN_STRING, cur->p, start_index, end_index));
+	return 0;
 }
 
 int tokenise(token_list* tokens, cursor* cur) {
@@ -139,32 +180,46 @@ int tokenise(token_list* tokens, cursor* cur) {
 		char c = peek(cur);
 		if(c == ' ' || c == '\n' || c == '\t') {
 			// whitespace, no token
+			next(cur);
 
 		} else if(c == '(') {
 			push_token(tokens, new_token(TOKEN_LEFT_PAREN));
+			next(cur);
 
 		} else if(c == ')') {
 			push_token(tokens, new_token(TOKEN_RIGHT_PAREN));
+			next(cur);
 
 		} else if(c == '[') {
 			push_token(tokens, new_token(TOKEN_LEFT_SQUARE));
+			next(cur);
 
 		} else if(c == ']') {
 			push_token(tokens, new_token(TOKEN_RIGHT_SQUARE));
+			next(cur);
 
 		} else if(c >= '0' && c <= '9') {
-			tokenise_number(tokens, cur);
+			int err = tokenise_number(tokens, cur);
+
+			if(err < 0) {
+				return err;
+			}
 
 		} else if(c == '\0') {
 			push_token(tokens, new_token(TOKEN_END));
 			return 0;
 
+		} else if((c == '"') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+			int err = tokenise_string(tokens, cur);
+
+			if(err < 0) {
+				return err;
+			}
+
 		} else {
 			printf("Unknown Token '%c'\n", c);
 			return -1;
 		}
-
-		next(cur);
 	}
 }
 

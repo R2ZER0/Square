@@ -12,26 +12,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "tok.h"
 
-const char* example = "def (concat \"thing_\" $var1) [print \"Hello, world!\" (+ 2 $1 $\"3\")];";
-
-#define MAX_TOKENS (16*1024)
-
-typedef enum token_type_t {
-	TOKEN_ERROR = 0,
-	TOKEN_START,
-	TOKEN_END,
-	TOKEN_VARIABLE,
-	TOKEN_LEFT_PAREN,
-	TOKEN_RIGHT_PAREN,
-	TOKEN_STRING,
-	TOKEN_NUMBER,
-	TOKEN_LEFT_SQUARE,
-	TOKEN_RIGHT_SQUARE,
-	TOKEN_STATEMENT_END,
-} token_type;
-
-const char* token_type_strmap[] = {
+const char* token_type_strmap[_NUM_TOKEN_TYPES] = {
 	"TOKEN_ERROR",
 	"TOKEN_START",
 	"TOKEN_END",
@@ -43,22 +26,6 @@ const char* token_type_strmap[] = {
 	"TOKEN_LEFT_SQUARE",
 	"TOKEN_RIGHT_SQUARE",
 	"TOKEN_STATEMENT_END",
-};
-
-typedef struct token_t token;
-struct token_t {
-	token* next;
-	token_type type;
-	union {
-		const char* str;
-		int num;
-	};
-};
-
-typedef struct token_list_t token_list;
-struct token_list_t {
-	token* first;
-	token* last;
 };
 
 void push_token(token_list* list, token* next_tok) {
@@ -109,16 +76,11 @@ token* new_token_num(token_type type, int num) {
 	return tok;
 }
 
-typedef struct cursor_t {
-	const char* p;
-	int index;
-} cursor;
-
-char peek(cursor* c) {
+char peek(token_cursor* c) {
 	return c->p[c->index];
 }
 
-char next(cursor* c) {
+char next(token_cursor* c) {
 	c->index++;
 	return peek(c);
 }
@@ -131,7 +93,7 @@ int is_ident_char(char c, int allow_numbers) {
 	);
 }
 
-int tokenise_number(token_list* tokens, cursor* cur) {
+int tokenise_number(token_list* tokens, token_cursor* cur) {
 	int num = 0;
 	char c = peek(cur);
 	while(c >= '0' && c <= '9') {
@@ -143,7 +105,7 @@ int tokenise_number(token_list* tokens, cursor* cur) {
 	return 0;
 }
 
-int tokenise_string(token_list* tokens, cursor* cur, token_type type) {
+int tokenise_string(token_list* tokens, token_cursor* cur, token_type type) {
 	int quoted = 0;
 
 	if(peek(cur) == '"') {
@@ -181,7 +143,7 @@ int tokenise_string(token_list* tokens, cursor* cur, token_type type) {
 	return 0;
 }
 
-int tokenise(token_list* tokens, cursor* cur) {
+int tokenise(token_list* tokens, token_cursor* cur) {
 	push_token(tokens, new_token(TOKEN_START));
 
 	while(1) {
@@ -266,20 +228,4 @@ void print_token_list(token_list* tokenlist) {
 		print_token(t);
 		t = t->next;
 	}
-}
-
-int main() {
-	cursor cur;
-	cur.p = example;
-	cur.index = 0;
-
-	token_list tokenlist;
-	tokenlist.first = NULL;
-	tokenlist.last = NULL;
-
-	tokenise(&tokenlist, &cur);
-
-	print_token_list(&tokenlist);
-
-	return 0;
 }

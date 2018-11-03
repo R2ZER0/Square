@@ -121,6 +121,14 @@ char next(cursor* c) {
 	return peek(c);
 }
 
+int is_ident_char(char c, int allow_numbers) {
+	return (
+		(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		(c >= '%' && c <= '/') || c == ':' || (c >= '<' && c <= '@') || 
+		(allow_numbers && c >= '0' && c <= '9')
+	);
+}
+
 int tokenise_number(token_list* tokens, cursor* cur) {
 	int num = 0;
 	char c = peek(cur);
@@ -133,7 +141,7 @@ int tokenise_number(token_list* tokens, cursor* cur) {
 	return 0;
 }
 
-int tokenise_string(token_list* tokens, cursor* cur) {
+int tokenise_string(token_list* tokens, cursor* cur, token_type type) {
 	int quoted = 0;
 
 	if(peek(cur) == '"') {
@@ -146,9 +154,7 @@ int tokenise_string(token_list* tokens, cursor* cur) {
 	int end_index = start_index-1;
 	while(1) {
 		c = peek(cur);
-		if( (c >= 'a' && c <= 'z') ||
-			(c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') ||
+		if( is_ident_char(c, 1) ||
 			(quoted && c != '"' && c != '\0')) {
 			end_index++;
 			next(cur);
@@ -169,7 +175,7 @@ int tokenise_string(token_list* tokens, cursor* cur) {
 		}
 	}
 
-	push_token(tokens, new_token_str(TOKEN_STRING, cur->p, start_index, end_index));
+	push_token(tokens, new_token_str(type, cur->p, start_index, end_index));
 	return 0;
 }
 
@@ -209,8 +215,16 @@ int tokenise(token_list* tokens, cursor* cur) {
 			push_token(tokens, new_token(TOKEN_END));
 			return 0;
 
-		} else if((c == '"') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-			int err = tokenise_string(tokens, cur);
+		} else if((c == '"') || is_ident_char(c, 0)) {
+			int err = tokenise_string(tokens, cur, TOKEN_STRING);
+
+			if(err < 0) {
+				return err;
+			}
+
+		} else if(c == '$') {
+			next(cur);
+			int err = tokenise_string(tokens, cur, TOKEN_VARIABLE);
 
 			if(err < 0) {
 				return err;
